@@ -117,14 +117,14 @@ public:
     void move(int a, int b) { w.x += a; w.y += b; e.x += a; e.y += b; }
     void draw( );
     void resize(int d) // Увеличение длины линии в (d) раз
-    { e.x += (e.x - w.x) * (d - 1); e.y += (e.y - w.y) * (d - 1);std::cout<<w.x<<" "<<w.y<<std::endl; }
+    { e.x += (e.x - w.x) * (d - 1); e.y += (e.y - w.y) * (d - 1); }
 };
 line::line (point a, point b) : w(a), e(b) {
     if((!on_screen(w.x, w.y)) || (!on_screen(e.x,e.y)))
         throw OffScreen("Фигура №" + std::to_string(id) + " при создании оказалась вне экрана.", point((east().x-west().x)/2, (north().y-south().y)/2));
 };
 
-line::line(point a, int L): w(a), e(point(a.x + L , a.y)) {
+line::line(point a, int L): w(a), e(point(a.x + L - 1, a.y)) {
     if((!on_screen(w.x, w.y)) || (!on_screen(e.x,e.y)))
         throw OffScreen("Фигура №" + std::to_string(id) + " при создании оказалась вне экрана.", point((east().x-west().x)/2, (north().y-south().y)/2));
 };

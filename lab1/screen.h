@@ -15,3 +15,4 @@ void screen_init( ); // Создание экрана
 void screen_destroy( ); // Удаление
 void screen_refresh( ); // Обновление
 void screen_clear( ); // Очистка
+char *screen_copy( ); // копия текущего экрана

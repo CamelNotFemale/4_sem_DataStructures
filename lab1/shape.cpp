@@ -5,43 +5,14 @@
 #include <iostream>
 #include "screen.h"
 #include "shape.h"
-// Косой крест
-class obl_cross: public shape {
-/* nw  n   ne
-    \     /
-      \ /
-   w   c   e
-      / \
-    /     \
-   sw  s   se
-*/
-    line left_obl;
-    line right_obl;
-public:
-    obl_cross(point a, point b) : left_obl(point(a.x, b.y), point(b.x, a.y)), right_obl(a,b) { };
-    obl_cross(point centre, int L)
-        : left_obl(point(centre.x-L,centre.y-L), point(centre.x+L,centre.y+L)),
-        right_obl(point(centre.x-L,centre.y+L), point(centre.x+L,centre.y-L))
-        {};
-    point north( ) const { return left_obl.north(); }
-    point south( ) const { return left_obl.south(); }
-    point east( ) const { return left_obl.east(); }
-    point west( ) const { return left_obl.west(); }
-    point neast( ) const { return left_obl.neast(); }
-    point seast( ) const { return left_obl.seast(); }
-    point nwest( ) const { return left_obl.nwest(); }
-    point swest( ) const { return left_obl.swest(); }
-    void move(int a, int b) { left_obl.move(a,b); right_obl.move(a,b); }
-    void draw( ) { left_obl.draw(); right_obl.draw(); }
-    void resize(int d) // Увеличение длины линии в (d) раз
-    { left_obl.resize(d); right_obl.resize(d); }
-};
+
+
 class circle : public shape {
 protected:
     point c;
     int radius;
 public:
-    circle(point a, int r) : c(a), radius(r) { }
+    circle(point a, int r);
     void draw();
     point north() const { return point(c.x,c.y+radius); }
     point south() const { return point(c.x,c.y-radius); }
@@ -52,35 +23,83 @@ public:
     point nwest() const { return point(c.x-radius*0.7, c.y+radius*0.7); }
     point swest() const { return point(c.x-radius*0.7, c.y-radius*0.7); }
     void move(int a , int b) { c.x += a; c.y += b; } //Перемещение
-    void resize(int d) { (d>0) ? radius *= d : radius /= -d; std::cout<<radius<<std::endl;} //Изменение размера
+    void resize(int d) { (d>0) ? radius *= d : radius /= -d; } //Изменение размера
 private:
     circle(const circle &x) { std::cout << "copy constructor\n"; } // конструктор копирования
     circle& operator=(const circle &x) { }// оператор присваивания копированием
     circle(circle &&x) { std::cout << "move constructor\n"; } // конструктор перемещения
     circle& operator=(circle &&x) { } // оператор присваивания перемещением
 };
+circle::circle(point a, int r) : c(a), radius(r) {
+    if((!on_screen(c.x+r, c.y)) || (!on_screen(c.x,c.y+r)) || (!on_screen(c.x-r,c.y)) || (!on_screen(c.x,c.y-r)))
+        throw OffScreen("Фигура №" + std::to_string(id) + " при создании оказалась вне экрана.", a);
+}
 void circle::draw() {
-    int x = 0, y = radius, delta = 1 - 2 * radius, error = 0;
-    while (y >= 0) {
-        put_point(c.x + x, c.y + y);
-        put_point(c.x + x, c.y - y);
-        put_point(c.x - x, c.y + y);
-        put_point(c.x - x, c.y - y);
-        error = 2 * (delta + y) - 1;
-        if (delta < 0 && error <= 0) {
+    char buff[YMAX][XMAX];
+    // копируем изображение экрана до изменений
+    /*for (int i=0; i<YMAX; i++)
+        for (int j=0; j<XMAX; j++)
+            buff[i][j] = screen[i][j];*/
+    try {
+        int x = 0, y = radius, delta = 1 - 2 * radius, error = 0;
+        while (y >= 0) {
+            put_point(c.x + x, c.y + y);
+            put_point(c.x + x, c.y - y);
+            put_point(c.x - x, c.y + y);
+            put_point(c.x - x, c.y - y);
+            error = 2 * (delta + y) - 1;
+            if (delta < 0 && error <= 0) {
+                ++x;
+                delta += 2 * x + 1;
+                continue;
+            }
+            error = 2 * (delta - x) - 1;
+            if (delta > 0 && error > 0) {
+                --y;
+                delta += 1 - 2 * y;
+                continue;
+            }
             ++x;
-            delta += 2 * x + 1;
-            continue;
-        }
-        error = 2 * (delta - x) - 1;
-        if (delta > 0 && error > 0) {
+            delta += 2 * (x - y);
             --y;
-            delta += 1 - 2 * y;
-            continue;
         }
-        ++x;
-        delta += 2 * (x - y);
-        --y;
+    }
+    catch (OffScreen &ex) {
+        std::cout << "Ошибка вывода фигуры №" << id << " (" << ex.what() << ex.crnds() << ")\n\n";
+        resize(-2);
+        try {
+            int x = 0, y = radius, delta = 1 - 2 * radius, error = 0;
+            while (y >= 0) {
+                put_point(c.x + x, c.y + y);
+                put_point(c.x + x, c.y - y);
+                put_point(c.x - x, c.y + y);
+                put_point(c.x - x, c.y - y);
+                error = 2 * (delta + y) - 1;
+                if (delta < 0 && error <= 0) {
+                    ++x;
+                    delta += 2 * x + 1;
+                    continue;
+                }
+                error = 2 * (delta - x) - 1;
+                if (delta > 0 && error > 0) {
+                    --y;
+                    delta += 1 - 2 * y;
+                    continue;
+                }
+                ++x;
+                delta += 2 * (x - y);
+                --y;
+            }
+            std::cout << "Фигура №" << id << " была уменьшена в два раза для корректного вывода\n";
+        }
+        catch (OffScreen) {
+            resize(2);
+            throw;
+        }
+        // возвращаем изображение экрана в исходное состояние
+        /*for (int i=0; i<YMAX; i++)
+            for (int j=0; j<XMAX; j++)
+                screen[i][j] = buff[i][j];*/
     }
 }
 
@@ -88,11 +107,15 @@ void circle::draw() {
 class h_circle: public rectangle, public reflectable {
     bool reflected;
 public:
-    h_circle(point a, point b, bool r=true) : rectangle(a, b), reflected(r) { }
+    h_circle(point a, point b, bool r);
     void draw();
     void flip_horisontally( ) { }; // Отразить горизонтально (пустая функция)
     void flip_vertically( ) { reflected = !reflected; }; // Отразить вертикально
 };
+h_circle::h_circle(point a, point b, bool r=true) : rectangle(a, b), reflected(r) {
+    if((!on_screen(a.x, a.y)) || (!on_screen(b.x,b.y)))
+        throw OffScreen("Фигура №" + std::to_string(id) + " при создании оказалась вне экрана.", point((east().x-west().x)/2, (north().y-south().y)/2));
+}
 void h_circle :: draw() //Алгоритм Брезенхэма для окружностей
 { //(выдаются два сектора, указываемые значением reflected)
     int x0 = (sw.x + ne.x)/2, y0 = reflected ? sw.y : ne.y;
@@ -163,41 +186,130 @@ void myshape :: move(int a, int b)
     l_eye.move(a, b); r_eye.move(a, b);
     mouth.move(a, b);
 }
+// Модель, заменяющая фигуру с ошибкой при создании/изменении (крестик размером 3x3)
+class error_model : public rotatable, public reflectable {
+private:
+    point s;
+public:
+    error_model(point point_) : s(point_) {}
+    point north() const{ return point(s.x, s.y + 1); }
+    point south() const{ return point(s.x, s.y - 1); }
+    point east() const{ return point (s.x + 1, s.y); }
+    point west() const{ return point(s.x - 1, s.y); }
+    point neast() const{ return point(s.x + 1, s.y + 1); }
+    point seast() const{ return point(s.x + 1, s.y - 1); }
+    point nwest() const{ return point(s.x - 1, s.y + 1); }
+    point swest() const{ return point(s.x - 1, s.y - 1); }
+
+    void draw();
+    void move(int dx, int dy) { s.x += dx; s.y += dy; };
+    // изменение ошибочной фигуры недопустимо
+    void resize(int) { }
+    void rotate_left() { }
+    void rotate_right() { }
+    void flip_vertically() { }
+    void flip_horisontally() { }
+};
+void error_model::draw() {
+    error_sym = true;
+    put_line(nwest(), seast());
+    put_line(swest(), neast());
+    error_sym = false;
+}
 int main( )
 {
     setlocale(LC_ALL, "Rus");
     screen_init( );
     //== 1.Объявление набора фигур ==
-    rectangle hat(point(0, 0), point(14, 5));
-    line brim(point(0,15),17);
-    circle emblem(point(60, 15), 2), whisker_left(point(70,10), 10), whisker_right(point(70,20), 8);
-    //circle emb_copy = emblem;
-    myshape face(point(15,10), point(27,18));
-    //h_circle beard(point(40,10), point(50,20));
-    shape_refresh( );
+    rotatable *hat;
+    try {
+        hat = new rectangle(point(0, 0), point(14, 5));
+    }
+    catch (OffScreen &ex) {
+        std::cout << ex.what() << "\n";
+        hat = new error_model(ex.get_point());
+    }
+    shape *brim;
+    try {
+        brim = new line(point(0,15),17);
+    }
+    catch (OffScreen &ex) {
+        std::cout << ex.what() << "\n";
+        brim = new error_model(ex.get_point());
+    }
+    shape *emblem;
+    try {
+        emblem = new circle(point(60, 15), 2);
+    }
+    catch (OffScreen &ex) {
+        std::cout << ex.what() << "\n";
+        emblem = new error_model(ex.get_point());
+    }
+    shape *whisker_left;
+    try {
+        whisker_left = new circle(point(70,9), 10);
+    }
+    catch (OffScreen &ex) {
+        std::cout << ex.what() << "\n";
+        whisker_left = new error_model(ex.get_point());
+    }
+    shape *whisker_right;
+    try {
+        whisker_right = new circle(point(70,20), 8);
+    }
+    catch (OffScreen &ex) {
+        std::cout << ex.what() << "\n";
+        whisker_right = new error_model(ex.get_point());
+    }
+    shape *face;
+    try {
+        face = new myshape(point(15,10), point(27,18));
+    }
+    catch (OffScreen &ex) {
+        std::cout << ex.what() << "\n";
+        face = new error_model(ex.get_point());
+    }
+    reflectable *beard;
+    try {
+        beard = new h_circle(point(40,10), point(50,20));
+    }
+    catch (OffScreen &ex) {
+        std::cout << ex.what() << "\n";
+        beard = new error_model(ex.get_point());
+    }
+    shape_refresh();
     std::cout << "=== Generated... ===\n";
     std::cin.get(); //Смотреть исходный набор
+
     //== 2.Подготовка к сборке ==
-    hat.rotate_right( );
-    brim.resize(2);
-    face.resize(2);
-    //beard.flip_vertically();
-    whisker_left.resize(-5);
-    whisker_right.resize(-4);
+    hat->rotate_right();
+    brim->resize(2);
+    face->resize(2);
+    beard->flip_vertically();
+    whisker_left->resize(-5);
+    whisker_right->resize(-4);
     shape_refresh( );
     std::cout << "=== Prepared... ===\n";
     std::cin.get(); //Смотреть результат поворотов/отражений
+
     //== 3.Сборка изображения ==
-    // face.move(0, -10); // Лицо - в исходное положение
-    up(brim, face);
-    up(hat, brim);
-    //down(beard, face);
-    centering(emblem, hat);
-    rightDown(whisker_left, face);
-    leftDown(whisker_right, face);
+    up(*brim, *face);
+    up(*hat, *brim);
+    down(*beard, *face);
+    centering(*emblem, *hat);
+    rightDown(*whisker_left, *face);
+    leftDown(*whisker_right, *face);
     shape_refresh( );
     std::cout << "=== Ready! ===\n";
     std::cin.get(); //Смотреть результат
     screen_destroy( );
+    delete hat;
+    delete brim;
+    delete emblem;
+    delete whisker_left;
+    delete whisker_right;
+    delete face;
+    delete beard;
+
     return 0;
 }

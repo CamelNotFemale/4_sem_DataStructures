@@ -16,7 +16,7 @@ void screen_destroy( ) {
 bool on_screen(int a, int b) // проверка попадания точки на экран
 { return 0 <= a && a < XMAX && 0 <= b && b < YMAX; }
 void put_point(int a, int b) {
-    if (error_sym) { if (on_screen(a,b)) screen[b][a] = error; }
+    if (error_sym) screen[b][a] = error;
     else if (on_screen(a,b)) screen[b][a] = black;
     else throw OffScreen("Точка лежит вне экрана", point(a,b));
 }
@@ -144,7 +144,7 @@ void line::draw() {
         }
         catch(OffScreen) {
             resize(2);
-            throw OffScreen("Фигура №" + std::to_string(id) + " при изменении оказалась вне экрана.", point((east().x-west().x)/2, (north().y-south().y)/2));
+            throw;
         }
     }
 }
@@ -207,8 +207,7 @@ void rectangle::draw()
         catch(OffScreen)
         {
             resize(2);
-            throw OffScreen("Фигура №" + std::to_string(id) + " при изменении оказалась вне экрана.", point((east().x-west().x)/2, (north().y-south().y)/2));
-            // если изменение параметров не помогло, возбуждаем ошибку с другим параметром - точкой центра ошибочной фигуры
+            throw; // если изменение параметров не помогло, передаем ошибку выше
         }
     }
 }

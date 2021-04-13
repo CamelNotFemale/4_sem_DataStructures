@@ -22,7 +22,7 @@ public:
     point seast() const { return point(c.x+radius*0.7, c.y-radius*0.7); }
     point nwest() const { return point(c.x-radius*0.7, c.y+radius*0.7); }
     point swest() const { return point(c.x-radius*0.7, c.y-radius*0.7); }
-    void move(int a , int b) { c.x += a; c.y += b; } //Перемещение
+    void move(int a , int b); //Перемещение
     void resize(int d) { (d>0) ? radius *= d : radius /= -d; } //Изменение размера
 private:
     circle(const circle &x) { std::cout << "copy constructor\n"; } // конструктор копирования
@@ -34,12 +34,18 @@ circle::circle(point a, int r) : c(a), radius(r) {
     if((!on_screen(c.x+r, c.y)) || (!on_screen(c.x,c.y+r)) || (!on_screen(c.x-r,c.y)) || (!on_screen(c.x,c.y-r)))
         throw OffScreen("Фигура №" + std::to_string(id) + " при создании оказалась вне экрана.", a);
 }
+void circle::move(int a, int b) {
+    point p(c.x+a, c.y+b);
+    if (!on_screen(p.x+radius,p.y) || !on_screen(p.x,p.y+radius) || !on_screen(p.x-radius,p.y) || !on_screen(p.x,p.y-radius))
+        throw OffScreen("Фигура №" + std::to_string(id) + " при перемещении оказалась вне экрана.", p);
+    else { c.x = p.x; c.y = p.y; }
+}
 void circle::draw() {
     char buff[YMAX][XMAX];
     // копируем изображение экрана до изменений
-    /*for (int i=0; i<YMAX; i++)
+    for (int i=0; i<YMAX; i++)
         for (int j=0; j<XMAX; j++)
-            buff[i][j] = screen[i][j];*/
+            buff[i][j] = screen[i][j];
     try {
         int x = 0, y = radius, delta = 1 - 2 * radius, error = 0;
         while (y >= 0) {
@@ -68,6 +74,10 @@ void circle::draw() {
         std::cout << "Ошибка вывода фигуры №" << id << " (" << ex.what() << ex.crnds() << ")\n\n";
         resize(-2);
         try {
+            // возвращаем изображение экрана в исходное состояние
+            for (int i=0; i<YMAX; i++)
+                for (int j=0; j<XMAX; j++)
+                    screen[i][j] = buff[i][j];
             int x = 0, y = radius, delta = 1 - 2 * radius, error = 0;
             while (y >= 0) {
                 put_point(c.x + x, c.y + y);
@@ -93,13 +103,13 @@ void circle::draw() {
             std::cout << "Фигура №" << id << " была уменьшена в два раза для корректного вывода\n";
         }
         catch (OffScreen) {
+            // возвращаем изображение экрана в исходное состояние
+            for (int i=0; i<YMAX; i++)
+                for (int j=0; j<XMAX; j++)
+                    screen[i][j] = buff[i][j];
             resize(2);
-            throw;
+            throw OffScreen("Фигура №" + std::to_string(id) + " при изменении оказалась вне экрана.", c);
         }
-        // возвращаем изображение экрана в исходное состояние
-        /*for (int i=0; i<YMAX; i++)
-            for (int j=0; j<XMAX; j++)
-                screen[i][j] = buff[i][j];*/
     }
 }
 
@@ -130,28 +140,6 @@ void h_circle :: draw() //Алгоритм Брезенхэма для окружностей
         if(delta > 0 && error > 0) { --y; delta += 1 - 2 * y; continue; }
         ++x; delta += 2 * (x - y); --y;
     }
-}
-// ПРИМЕР ДОБАВКИ: дополнительная функция присоединения…
-void down(shape &p, const shape &q) {
-    point n = q.south( );
-    point s = p.north( );
-    p.move(n.x - s.x, n.y - s.y - 1);
-}
-void centering(shape &p, const shape &q) {
-    int delta_x = (q.east().x + q.west().x)/2 - (p.east().x + p.west().x)/2, // (центр фигуры q) - (центр фигуры p), компонента икс
-        delta_y = (q.east().y + q.west().y)/2 - (p.east().y + p.west().y)/2; // (центр фигуры q) - (центр фигуры p), компонента игрек
-    p.move(delta_x, delta_y);
-}
-void rightDown(shape &p, shape&q) {
-    point n = q.seast();
-    point s = p.nwest();
-    p.move(n.x - s.x, n.y - s.y);
-}
-
-void leftDown(shape &p, shape &q){
-    point n = q.swest();
-    point s = p.neast();
-    p.move(n.x - s.x - 1, n.y - s.y);
 }
 // Cборная пользовательская фигура - физиономия
 class myshape : public rectangle { // Моя фигура ЯВЛЯЕТСЯ
@@ -216,6 +204,107 @@ void error_model::draw() {
     put_line(swest(), neast());
     error_sym = false;
 }
+void shape_refresh( ) { // Перерисовка всех фигур на экране
+    screen_clear( );
+    for (auto p : shape::shapes) {
+        try {
+            p->draw( ); //Динамическое связывание!!!
+        }
+        catch(OffScreen &ex) {
+            std::cout << "Фигура №" << p->id << " не будет выведена (" << ex.what() << ex.crnds() << ")\n\n";
+            error_model err = error_model(ex.get_point());
+            err.draw();
+        }
+    }
+    screen_refresh( );
+}
+// ПРИМЕР ДОБАВКИ: дополнительная функция присоединения…
+void down(shape &p, const shape &q) {
+    try {
+        point n = q.south( );
+        point s = p.north( );
+        p.move(n.x - s.x, n.y - s.y - 1);
+    }
+    catch (OffScreen &ex) {
+        std::cout << ex.what() << "(Точка центра " << ex.crnds() << ")\n";
+        p.resize(-2);
+        try {
+            point n = q.south( );
+        point s = p.north( );
+        p.move(n.x - s.x, n.y - s.y - 1);
+            std::cout << "Фигура №" << p.id << " была уменьшена в два раза для корректного перемещения\n";
+        }
+        catch (OffScreen) {
+            p.resize(2);
+            throw;
+        }
+    }
+}
+void centering(shape &p, const shape &q) {
+    int delta_x, delta_y;
+    try {
+        delta_x = (q.east().x + q.west().x)/2 - (p.east().x + p.west().x)/2, // (центр фигуры q) - (центр фигуры p), компонента икс
+        delta_y = (q.east().y + q.west().y)/2 - (p.east().y + p.west().y)/2; // (центр фигуры q) - (центр фигуры p), компонента игрек
+        p.move(delta_x, delta_y);
+    }
+    catch (OffScreen &ex) {
+        std::cout << ex.what() << "(Точка центра " << ex.crnds() << ")\n";
+        p.resize(-2);
+        try {
+            delta_x = (q.east().x + q.west().x)/2 - (p.east().x + p.west().x)/2, // (центр фигуры q) - (центр фигуры p), компонента икс
+        delta_y = (q.east().y + q.west().y)/2 - (p.east().y + p.west().y)/2; // (центр фигуры q) - (центр фигуры p), компонента игрек
+        p.move(delta_x, delta_y);
+            std::cout << "Фигура №" << p.id << " была уменьшена в два раза для корректного перемещения\n";
+        }
+        catch (OffScreen) {
+            p.resize(2);
+            throw;
+        }
+    }
+}
+void rightDown(shape &p, shape&q) {
+    try {
+        point n = q.seast();
+        point s = p.nwest();
+        p.move(n.x - s.x, n.y - s.y);
+    }
+    catch (OffScreen &ex) {
+        std::cout << ex.what() << "(Точка центра " << ex.crnds() << ")\n";
+        p.resize(-2);
+        try {
+            point n = q.seast();
+            point s = p.nwest();
+            p.move(n.x - s.x, n.y - s.y);
+            std::cout << "Фигура №" << p.id << " была уменьшена в два раза для корректного перемещения\n";
+        }
+        catch (OffScreen) {
+            p.resize(2);
+            throw;
+        }
+    }
+}
+
+void leftDown(shape &p, shape &q){
+    try {
+        point n = q.swest();
+        point s = p.neast();
+        p.move(n.x - s.x - 1, n.y - s.y);
+    }
+    catch (OffScreen &ex) {
+        std::cout << ex.what() << "(Точка центра " << ex.crnds() << ")\n";
+        p.resize(-2);
+        try {
+            point n = q.swest();
+            point s = p.neast();
+            p.move(n.x - s.x - 1, n.y - s.y);
+            std::cout << "Фигура №" << p.id << " была уменьшена в два раза для корректного перемещения\n";
+        }
+        catch (OffScreen) {
+            p.resize(2);
+            throw;
+        }
+    }
+}
 int main( )
 {
     setlocale(LC_ALL, "Rus");
@@ -255,7 +344,7 @@ int main( )
     }
     shape *whisker_right;
     try {
-        whisker_right = new circle(point(70,20), 8);
+        whisker_right = new circle(point(70,20), 12);
     }
     catch (OffScreen &ex) {
         std::cout << ex.what() << "\n";

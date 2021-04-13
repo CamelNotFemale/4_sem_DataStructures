@@ -236,7 +236,7 @@ void down(shape &p, const shape &q) {
         }
         catch (OffScreen) {
             p.resize(2);
-            throw;
+            std::cout << "Фигура №" << p.id << " не будет перемещена\n";
         }
     }
 }
@@ -258,7 +258,7 @@ void centering(shape &p, const shape &q) {
         }
         catch (OffScreen) {
             p.resize(2);
-            throw;
+            std::cout << "Фигура №" << p.id << " не будет перемещена\n";
         }
     }
 }
@@ -279,7 +279,7 @@ void rightDown(shape &p, shape&q) {
         }
         catch (OffScreen) {
             p.resize(2);
-            throw;
+            std::cout << "Фигура №" << p.id << " не будет перемещена\n";
         }
     }
 }
@@ -301,7 +301,7 @@ void leftDown(shape &p, shape &q){
         }
         catch (OffScreen) {
             p.resize(2);
-            throw;
+            std::cout << "Фигура №" << p.id << " не будет перемещена\n";
         }
     }
 }

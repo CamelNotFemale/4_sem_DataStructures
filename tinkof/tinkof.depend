@@ -1,0 +1,7 @@
+# depslib dependency file v1.0
+1622130952 source:c:\users\дима\documents\4_sem_datastructures\tinkof\main.cpp
+	<bits/stdc++.h>
+	<iostream>
+	<vector>
+	<algorithm>
+

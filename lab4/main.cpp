@@ -28,7 +28,7 @@ int main(int argc, char* argv[])
     ofstream fout("in.txt");
     srand((unsigned int)time(nullptr));
 
-    auto MaxMul = 5;
+    auto MaxMul = 50;
     int middle_power = 0, set_count = 0;
     int iterations = 201;
     int max_ = 2000;
